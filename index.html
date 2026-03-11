@@ -1,0 +1,1575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM App</title>
+    <!-- Google Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        /* Solarized Light Theme */
+        :root {
+            --base03: #002b36;
+            --base02: #073642;
+            --base01: #586e75;
+            --base00: #657b83;
+            --base0: #839496;
+            --base1: #93a1a1;
+            --base2: #eee8d5; /* Background */
+            --base3: #fdf6e3; /* Brighter background */
+            --yellow: #b58900;
+            --orange: #cb4b16;
+            --red: #dc322f;
+            --magenta: #d33682;
+            --violet: #6c71c4;
+            --blue: #268bd2;
+            --cyan: #2aa198;
+            --green: #859900;
+
+            --text-color: var(--base01);
+            --background-color: var(--base2);
+            --secondary-background-color: var(--base3);
+            --border-color: var(--base1);
+            --primary-button-bg: var(--blue);
+            --primary-button-text: var(--base3);
+            --secondary-button-bg: var(--base1);
+            --secondary-button-text: var(--base03);
+            --toolbar-bg: var(--base3);
+            --toolbar-text: var(--base01);
+            --modal-bg: var(--base3);
+        }
+
+        /* Basic Reset & Body Styling */
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: var(--text-color);
+            background-color: var(--background-color);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden; /* Prevent body scroll */
+        }
+
+        /* Toolbar Styling */
+        header#toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 16px;
+            background-color: var(--toolbar-bg);
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            min-height: 48px; /* Ensure a slim height */
+            flex-shrink: 0; /* Prevent toolbar from shrinking */
+        }
+
+        #toolbar h1 {
+            margin: 0;
+            font-size: 1.2em;
+            color: var(--toolbar-text);
+            font-weight: 600;
+        }
+
+        #toolbar .toolbar-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .toolbar-button {
+            background: none;
+            border: none;
+            color: var(--toolbar-text);
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px; /* Material Icons default size */
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+
+        .toolbar-button:hover:not(:disabled) {
+            background-color: rgba(0, 0, 0, 0.05);
+            color: var(--blue);
+        }
+
+        .toolbar-button:active:not(:disabled) {
+            background-color: rgba(0, 0, 0, 0.1);
+        }
+
+        .toolbar-button:disabled {
+            color: var(--base1);
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        /* Content Area Styling */
+        main#content-area {
+            flex-grow: 1; /* Allows content area to fill remaining space */
+            position: relative; /* For absolutely positioned children like iframe/modals */
+            display: flex; /* To center landing page */
+            justify-content: center;
+            align-items: center;
+            padding: 20px; /* Some padding for landing page */
+            overflow: hidden; /* Important for iframe */
+        }
+
+        #landing-page {
+            max-width: 600px;
+            text-align: center;
+            padding: 40px;
+            background-color: var(--secondary-background-color);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            color: var(--base01);
+        }
+
+        #landing-page h2 {
+            color: var(--blue);
+            margin-top: 0;
+        }
+
+        /* Iframe Styling */
+        #execution-frame {
+            position: absolute; /* Take up full content area */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            background-color: var(--base3); /* White background for iframe content */
+            visibility: hidden; /* Hidden by default */
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        #execution-frame.visible {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        /* Modal / Dialog Styling */
+        dialog {
+            border: none;
+            border-radius: 8px;
+            padding: 20px 30px;
+            background-color: var(--modal-bg);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+            max-width: 500px;
+            width: 90%;
+            color: var(--text-color);
+            z-index: 1000; /* Ensure modals are on top */
+        }
+
+        dialog::backdrop {
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+
+        dialog h3 {
+            color: var(--blue);
+            margin-top: 0;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: var(--base00);
+            font-size: 0.9em;
+        }
+
+        .form-group input[type="text"],
+        .form-group input[type="password"] {
+            width: calc(100% - 20px);
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 1em;
+            background-color: var(--base3);
+            color: var(--text-color);
+            box-sizing: border-box;
+        }
+
+        .form-group input[type="text"]:focus,
+        .form-group input[type="password"]:focus {
+            outline: none;
+            border-color: var(--blue);
+            box-shadow: 0 0 0 2px rgba(38, 139, 210, 0.2);
+        }
+
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .modal-buttons button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1em;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+
+        .modal-buttons button.primary {
+            background-color: var(--primary-button-bg);
+            color: var(--primary-button-text);
+        }
+
+        .modal-buttons button.primary:hover:not(:disabled) {
+            background-color: #1a6fb2; /* Darker blue */
+        }
+
+        .modal-buttons button.secondary {
+            background-color: var(--secondary-button-bg);
+            color: var(--secondary-button-text);
+        }
+
+        .modal-buttons button.secondary:hover:not(:disabled) {
+            background-color: var(--base0);
+        }
+
+        .modal-buttons button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* Specific modal content */
+        #settings-modal .modal-buttons {
+            justify-content: space-between; /* To place Load/Save on left */
+            flex-wrap: wrap; /* Allow wrapping on smaller screens */
+            gap: 8px; /* Reduce gap to fit more buttons */
+        }
+
+        #settings-modal .modal-buttons .left-group {
+            display: flex;
+            gap: 8px;
+            flex-grow: 1; /* Allow left group to take space */
+        }
+
+        #settings-modal .modal-buttons .right-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* Message/Error Modal Styling */
+        #message-modal .message-content {
+            white-space: pre-wrap; /* Preserve whitespace and wrap text */
+            font-family: 'Consolas', 'Courier New', monospace;
+            background-color: var(--base02);
+            color: var(--base1);
+            padding: 15px;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            border: 1px dashed var(--orange);
+        }
+        #message-modal.error .message-content {
+             border-color: var(--red);
+        }
+        #message-modal.info .message-content {
+             border-color: var(--cyan);
+        }
+
+        /* Loading indicator */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.3);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            visibility: hidden;
+            opacity: 0;
+            transition: visibility 0s, opacity 0.3s linear;
+        }
+
+        .loading-overlay.visible {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .loading-spinner {
+            border: 5px solid var(--base1);
+            border-top: 5px solid var(--blue);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <header id="toolbar">
+        <button id="settings-btn" class="toolbar-button" title="Settings">
+            <span class="material-icons">settings</span>
+        </button>
+        <h1>LLM App</h1>
+        <div class="toolbar-buttons">
+            <button id="download-btn" class="toolbar-button" title="Download Current File" disabled>
+                <span class="material-icons">download</span>
+            </button>
+            <button id="add-to-drive-btn" class="toolbar-button" title="Save to Google Drive" disabled>
+                <span class="material-icons">add_to_drive</span>
+            </button>
+            <button id="resume-btn" class="toolbar-button" title="Resume Workflow" disabled>
+                <span class="material-icons">play_arrow</span>
+            </button>
+        </div>
+    </header>
+
+    <main id="content-area">
+        <div id="landing-page">
+            <h2>Welcome to the LLM Application!</h2>
+            <p>This application utilizes powerful Large Language Models to assist in your workflow.</p>
+            <p>To begin, please configure your API keys by clicking the <span class="material-icons" style="font-size: 1em; vertical-align: middle;">settings</span> (Settings) icon in the top left corner.</p>
+            <p>Once configured, you can load a Markdown file from your local machine or Google Drive to start the generation pipeline.</p>
+        </div>
+
+        <iframe id="execution-frame" title="Application Output"></iframe>
+
+        <!-- Modals -->
+
+        <!-- Settings Modal -->
+        <dialog id="settings-modal">
+            <h3>Application Settings</h3>
+            <form id="settings-form">
+                <div class="form-group">
+                    <label for="coding-model">Coding Model</label>
+                    <input type="text" id="coding-model" value="gemini-2.5-flash-lite">
+                </div>
+                <div class="form-group">
+                    <label for="coding-api-key">Coding API Key</label>
+                    <input type="password" id="coding-api-key">
+                </div>
+                <div class="form-group">
+                    <label for="conv-model">Conversation Model</label>
+                    <input type="text" id="conv-model" value="gemini-2.5-flash-lite">
+                </div>
+                <div class="form-group">
+                    <label for="conv-api-key">Conversation API Key</label>
+                    <input type="password" id="conv-api-key">
+                </div>
+                <div class="modal-buttons">
+                    <div class="left-group">
+                        <button type="button" class="secondary" id="load-config-drive-btn">Load from Drive</button>
+                        <button type="button" class="secondary" id="save-config-drive-btn">Save to Drive</button>
+                    </div>
+                    <div class="right-group">
+                        <button type="button" class="secondary" id="cancel-settings-btn">Cancel</button>
+                        <button type="submit" class="primary" id="save-settings-btn">OK</button>
+                    </div>
+                </div>
+            </form>
+        </dialog>
+
+        <!-- Resume Modal -->
+        <dialog id="resume-modal">
+            <h3>Load Markdown File</h3>
+            <p>Please select a Markdown file either from local input or from google drive.</p>
+            <div class="modal-buttons">
+                <button type="button" class="secondary" id="cancel-resume-btn">Cancel</button>
+                <button type="button" class="primary" id="upload-local-file-btn">Upload</button>
+                <button type="button" class="primary" id="load-drive-file-btn">Load from Drive</button>
+            </div>
+            <input type="file" id="local-file-input" accept=".md, .markdown" style="display: none;">
+        </dialog>
+
+        <!-- Generic Message/Error Modal -->
+        <dialog id="message-modal">
+            <h3 id="message-modal-title"></h3>
+            <div id="message-modal-content" class="message-content"></div>
+            <div class="modal-buttons">
+                <button type="button" class="primary" id="close-message-modal-btn">OK</button>
+            </div>
+        </dialog>
+
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="loading-overlay">
+            <div class="loading-spinner"></div>
+        </div>
+    </main>
+
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://apis.google.com/js/api.js" async defer></script>
+    <script type="module">
+        // Global State
+        const CONFIG = {
+            CODING_MODEL: 'gemini-2.5-flash-lite',
+            CODING_API_KEY: '',
+            CONV_MODEL: 'gemini-2.5-flash-lite',
+            CONV_API_KEY: ''
+        };
+
+        let currentMarkdownFile = { name: '', content: '' };
+        let googleAccessToken = null; // Stored from GIS
+        let googlePickerApiLoaded = false;
+        let isProcessing = false; // Prevents multiple actions during long operations
+        let iframeWindow = null; // Reference to the iframe's contentWindow
+
+        // Google API Client ID
+        const CLIENT_ID = '213106841057-jffschqelp14pa3vafc7p93e5aq454ip.apps.googleusercontent.com';
+        const SCOPES = [
+            'https://www.googleapis.com/auth/drive.appdata',
+            'https://www.googleapis.com/auth/drive.file'
+        ].join(' ');
+
+        // UI Elements
+        const settingsBtn = document.getElementById('settings-btn');
+        const downloadBtn = document.getElementById('download-btn');
+        const addToDriveBtn = document.getElementById('add-to-drive-btn');
+        const resumeBtn = document.getElementById('resume-btn');
+        const landingPage = document.getElementById('landing-page');
+        const executionFrame = document.getElementById('execution-frame');
+
+        const settingsModal = document.getElementById('settings-modal');
+        const codingModelInput = document.getElementById('coding-model');
+        const codingApiKeyInput = document.getElementById('coding-api-key');
+        const convModelInput = document.getElementById('conv-model');
+        const convApiKeyInput = document.getElementById('conv-api-key');
+        const loadConfigDriveBtn = document.getElementById('load-config-drive-btn');
+        const saveConfigDriveBtn = document.getElementById('save-config-drive-btn');
+        const cancelSettingsBtn = document.getElementById('cancel-settings-btn');
+        const saveSettingsBtn = document.getElementById('save-settings-btn');
+
+        const resumeModal = document.getElementById('resume-modal');
+        const cancelResumeBtn = document.getElementById('cancel-resume-btn');
+        const uploadLocalFileBtn = document.getElementById('upload-local-file-btn');
+        const loadDriveFileBtn = document.getElementById('load-drive-file-btn');
+        const localFileInput = document.getElementById('local-file-input');
+
+        const messageModal = document.getElementById('message-modal');
+        const messageModalTitle = document.getElementById('message-modal-title');
+        const messageModalContent = document.getElementById('message-modal-content');
+        const closeMessageModalBtn = document.getElementById('close-message-modal-btn');
+
+        const loadingOverlay = document.getElementById('loading-overlay');
+
+        // --- Utility Functions ---
+
+        /** Shows the loading spinner. */
+        function showLoading() {
+            isProcessing = true;
+            loadingOverlay.classList.add('visible');
+        }
+
+        /** Hides the loading spinner. */
+        function hideLoading() {
+            isProcessing = false;
+            loadingOverlay.classList.remove('visible');
+        }
+
+        /** Disables a UI button. */
+        function disableButton(buttonElement) {
+            buttonElement.disabled = true;
+        }
+
+        /** Enables a UI button. */
+        function enableButton(buttonElement) {
+            buttonElement.disabled = false;
+        }
+
+        /** Shows a dialog modal. */
+        function showModal(dialogElement) {
+            dialogElement.showModal();
+        }
+
+        /** Hides a dialog modal. */
+        function hideModal(dialogElement) {
+            dialogElement.close();
+        }
+
+        /**
+         * Displays a generic message modal.
+         * @param {string} title
+         * @param {string} message
+         * @param {'info'|'error'} type
+         */
+        function showMessage(title, message, type = 'info') {
+            messageModalTitle.textContent = title;
+            messageModalContent.textContent = message;
+            messageModal.classList.remove('info', 'error');
+            messageModal.classList.add(type);
+            showModal(messageModal);
+        }
+
+        /**
+         * Generic error handling wrapper.
+         * @param {Error|any} error - The error object or message.
+         * @param {string} context - A description of where the error occurred.
+         */
+        function handleError(error, context = 'An unexpected error occurred') {
+            console.error(`Error in ${context}:`, error);
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            showMessage(`Error: ${context}`, errorMessage, 'error');
+            hideLoading();
+            // Re-enable settings button if it was disabled due to modal open
+            if (settingsModal.open || resumeModal.open) {
+                 enableButton(settingsBtn);
+            }
+        }
+
+        /**
+         * Computes the SHA-256 hash of a string.
+         * @param {string} text - The input string.
+         * @returns {Promise<string>} The SHA-256 hash as a hexadecimal string.
+         */
+        async function hashSHA256(text) {
+            const textEncoder = new TextEncoder();
+            const data = textEncoder.encode(text);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hexHash = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            return hexHash;
+        }
+
+        /**
+         * Posts a message to the iframe's content window.
+         * @param {string} type - The type of message (e.g., "functionResponse").
+         * @param {any} payload - The data payload.
+         * @param {any} error - Optional error object.
+         */
+        function postMessageToIframe(type, payload, error = null) {
+            if (iframeWindow) {
+                iframeWindow.postMessage([type, payload, error], window.location.origin);
+            } else {
+                console.warn("Iframe window not available to post message.");
+            }
+        }
+
+        // --- Google Integration ---
+
+        /** Initializes Google Identity Services for silent OAuth2. */
+        function initGoogleAuth() {
+            try {
+                // Initialize Google API client (gapi)
+                gapi.load('client:picker', async () => {
+                    await gapi.client.init({ clientId: CLIENT_ID, scope: SCOPES, discoveryDocs: ["https://www.googleapis.com/discovery/v1/apis/drive/v3/rest"] });
+                    await gapi.client.load('drive', 'v3');
+                    console.log('gapi.client.drive initialized.');
+                });
+
+                // Initialize Google Identity Services (GIS) for token client
+                window.google.accounts.oauth2.initTokenClient({
+                    client_id: CLIENT_ID,
+                    scope: SCOPES,
+                    callback: (tokenResponse) => {
+                        if (tokenResponse.error) {
+                            console.error('GIS Token client error:', tokenResponse.error);
+                            googleAccessToken = null; // Clear token on error
+                            return;
+                        }
+                        googleAccessToken = tokenResponse.access_token;
+                        console.log('Google Access Token acquired/refreshed:', googleAccessToken);
+                        // Store in localStorage for reuse across sessions
+                        localStorage.setItem('googleAccessToken', googleAccessToken);
+                    },
+                    error_callback: (error) => {
+                         console.error('GIS Token client init error_callback:', error);
+                    }
+                });
+                console.log('Google Identity Services client initialized.');
+
+                // Attempt to load token from local storage
+                const storedToken = localStorage.getItem('googleAccessToken');
+                if (storedToken) {
+                    googleAccessToken = storedToken;
+                    console.log('Google Access Token loaded from localStorage.');
+                }
+
+            } catch (error) {
+                handleError(error, 'Initializing Google Auth');
+            }
+        }
+
+        /**
+         * Ensures a valid Google access token is available.
+         * Initiates a silent token request if no token or token is likely expired.
+         * @returns {Promise<string>} The Google access token.
+         */
+        async function getGoogleAuthToken() {
+            return new Promise((resolve, reject) => {
+                if (googleAccessToken) {
+                    resolve(googleAccessToken);
+                    return;
+                }
+
+                const tokenClient = window.google.accounts.oauth2.initTokenClient({
+                    client_id: CLIENT_ID,
+                    scope: SCOPES,
+                    callback: (tokenResponse) => {
+                        if (tokenResponse.error) {
+                            reject(new Error(`Failed to get Google token: ${tokenResponse.error}`));
+                            return;
+                        }
+                        googleAccessToken = tokenResponse.access_token;
+                        localStorage.setItem('googleAccessToken', googleAccessToken);
+                        console.log('Google Access Token acquired/refreshed:', googleAccessToken);
+                        resolve(googleAccessToken);
+                    },
+                    error_callback: (error) => {
+                        reject(new Error(`Google token client error: ${error.details || error.type}`));
+                    }
+                });
+                tokenClient.requestAccessToken({ prompt: '' }); // '' for silent, 'consent' for explicit on first sign-in
+            });
+        }
+
+        /** Loads the Google Picker API script. */
+        async function loadGooglePickerAPI() {
+            return new Promise((resolve, reject) => {
+                if (googlePickerApiLoaded) {
+                    resolve();
+                    return;
+                }
+                // Picker API uses gapi, which is loaded asynchronously. Ensure gapi is loaded.
+                if (typeof gapi === 'undefined' || !gapi.loaded) {
+                    // This case should be handled by `gapi.load('client:picker', ...)` in `initGoogleAuth`
+                    // but as a fallback/check:
+                    console.warn('gapi not fully loaded before attempting to load Picker API. Waiting...');
+                    setTimeout(() => loadGooglePickerAPI().then(resolve).catch(reject), 500);
+                    return;
+                }
+
+                // If gapi is loaded, google.picker should be available or loading
+                if (typeof google.picker !== 'undefined') {
+                    googlePickerApiLoaded = true;
+                    resolve();
+                    return;
+                }
+                
+                // If it's not immediately available, rely on gapi.load to finish
+                // (The gapi.load('client:picker') in initGoogleAuth should handle this)
+                // For direct loading, you'd add this, but gapi.load includes it.
+                // const script = document.createElement('script');
+                // script.src = 'https://docs.google.com/picker/docs.js'; // This is the actual picker API script
+                // script.onload = () => { googlePickerApiLoaded = true; resolve(); };
+                // script.onerror = () => { reject(new Error('Failed to load Google Picker API script.')); };
+                // document.head.appendChild(script);
+
+                // Instead, we just wait for `gapi.load` to ensure it's loaded.
+                // The `gapi.client.init` includes loading picker.
+                // We'll trust that if gapi.client.drive is available, picker is too.
+                console.log('Google Picker API check: gapi.client.drive should be ready, implying picker is ready.');
+                googlePickerApiLoaded = true;
+                resolve();
+            });
+        }
+
+        /**
+         * Creates and displays a Google Drive Picker.
+         * @param {number} viewId - The ID of the view (e.g., google.picker.ViewId.DOCS, google.picker.ViewId.FOLDERS).
+         * @param {(data: any) => void} callback - Callback function with selected item data.
+         * @param {string[]} [mimeTypes] - Optional array of MIME types to filter.
+         */
+        async function createPicker(viewId, callback, mimeTypes = []) {
+            try {
+                showLoading();
+                await getGoogleAuthToken(); // Ensure token is fresh
+                await loadGooglePickerAPI();
+
+                if (typeof google.picker === 'undefined') {
+                    throw new Error('Google Picker API not loaded. Ensure gapi.load has completed.');
+                }
+                if (!gapi.client.drive) {
+                    throw new Error('gapi.client.drive not loaded. Please wait for Google API client initialization.');
+                }
+
+                const pickerBuilder = new google.picker.PickerBuilder()
+                    .setOAuthToken(googleAccessToken)
+                    .setDeveloperKey(CLIENT_ID.split('-')[0]) // Developer key is usually just the first part of CLIENT_ID
+                    .setCallback((data) => {
+                        if (data.action === google.picker.Action.PICKED) {
+                            callback(data.docs);
+                        } else if (data.action === google.picker.Action.CANCEL) {
+                            console.log('Picker cancelled.');
+                        }
+                        hideLoading();
+                    });
+
+                if (viewId === google.picker.ViewId.DOCS) {
+                    const docsView = new google.picker.DocsView();
+                    if (mimeTypes && mimeTypes.length > 0) {
+                        docsView.setMimeTypes(mimeTypes.join(','));
+                    }
+                    pickerBuilder.addView(docsView);
+                } else if (viewId === google.picker.ViewId.FOLDERS) {
+                    pickerBuilder.addView(new google.picker.FoldersView());
+                } else {
+                    pickerBuilder.addView(new google.picker.View(viewId));
+                }
+
+                const picker = pickerBuilder.build();
+                picker.setVisible(true);
+            } catch (error) {
+                handleError(error, 'Google Drive Picker');
+                hideLoading();
+            }
+        }
+
+        /**
+         * Selects a file from Google Drive using the Picker API.
+         * @returns {Promise<{id: string, name: string, content: string}>} File details.
+         */
+        async function selectFileFromDrive() {
+            return new Promise((resolve, reject) => {
+                createPicker(google.picker.ViewId.DOCS, async (docs) => {
+                    if (docs && docs.length > 0) {
+                        const file = docs[0];
+                        try {
+                            const fileContent = await fetchFileContentFromDrive(file.id);
+                            resolve({ id: file.id, name: file.name, content: fileContent });
+                        } catch (error) {
+                            reject(error);
+                        }
+                    } else {
+                        reject(new Error('No file selected.'));
+                    }
+                }, ['text/markdown']);
+            });
+        }
+
+        /**
+         * Selects a folder from Google Drive using the Picker API.
+         * @returns {Promise<{id: string, name: string}>} Folder details.
+         */
+        async function selectFolderFromDrive() {
+            return new Promise((resolve, reject) => {
+                createPicker(google.picker.ViewId.FOLDERS, (docs) => {
+                    if (docs && docs.length > 0) {
+                        const folder = docs[0];
+                        resolve({ id: folder.id, name: folder.name });
+                    } else {
+                        reject(new Error('No folder selected.'));
+                    }
+                }, ['application/vnd.google-apps.folder']);
+            });
+        }
+
+        /**
+         * Fetches the content of a file from Google Drive.
+         * @param {string} fileId - The ID of the file.
+         * @returns {Promise<string>} The file content.
+         */
+        async function fetchFileContentFromDrive(fileId) {
+            try {
+                showLoading();
+                await getGoogleAuthToken();
+                const response = await gapi.client.drive.files.get({
+                    fileId: fileId,
+                    alt: 'media' // Request file content
+                });
+                return response.body; // Raw content
+            } finally {
+                hideLoading();
+            }
+        }
+
+        /**
+         * Saves file content to Google Drive.
+         * If parentFolderId is 'appDataFolder', it searches for the file there.
+         * Otherwise, it searches in 'drive'.
+         * If found, it updates the existing file. Otherwise, it creates a new one.
+         * @param {string} fileName - The name of the file.
+         * @param {string} fileContent - The content of the file.
+         * @param {string} [parentFolderId='appDataFolder'] - The ID of the parent folder or 'appDataFolder'.
+         * @param {string} [mimeType='text/markdown'] - The MIME type of the file.
+         * @returns {Promise<string>} The file ID.
+         */
+        async function saveFileToDrive(fileName, fileContent, parentFolderId = 'appDataFolder', mimeType = 'text/markdown') {
+            try {
+                showLoading();
+                await getGoogleAuthToken();
+
+                const metadata = {
+                    name: fileName,
+                    mimeType: mimeType,
+                    parents: [parentFolderId]
+                };
+                const spaces = parentFolderId === 'appDataFolder' ? 'appDataFolder' : 'drive';
+
+                // Check if file already exists in the target folder
+                const existingFiles = await gapi.client.drive.files.list({
+                    q: `name = '${fileName}' and '${parentFolderId}' in parents and trashed = false`,
+                    spaces: spaces,
+                    fields: 'files(id, name)'
+                });
+
+                let fileId = null;
+                if (existingFiles.result.files.length > 0) {
+                    fileId = existingFiles.result.files[0].id;
+                }
+
+                // Encode content for multipart request
+                const base64Content = btoa(unescape(encodeURIComponent(fileContent)));
+                const boundary = 'foo_bar_baz';
+                const multipartRequestBody = `
+--${boundary}
+Content-Type: application/json; charset=UTF-8
+
+${JSON.stringify(metadata)}
+
+--${boundary}
+Content-Type: ${metadata.mimeType}
+Content-Transfer-Encoding: base64
+
+${base64Content}
+--${boundary}--
+`;
+
+                const contentType = `multipart/related; boundary="${boundary}"`;
+
+                let method = 'POST';
+                let path = '/upload/drive/v3/files';
+                if (fileId) {
+                    method = 'PATCH';
+                    path = `/upload/drive/v3/files/${fileId}`;
+                }
+
+                const response = await gapi.client.request({
+                    path: path,
+                    method: method,
+                    params: {
+                        uploadType: 'multipart'
+                    },
+                    headers: {
+                        'Content-Type': contentType,
+                        'Authorization': `Bearer ${googleAccessToken}` // gapi.client.request needs explicit auth
+                    },
+                    body: multipartRequestBody
+                });
+
+                console.log('File saved to Drive:', response.result);
+                showMessage('Success', `File '${fileName}' saved to Google Drive.`, 'info');
+                return response.result.id;
+
+            } catch (error) {
+                handleError(error, `Saving file '${fileName}' to Drive`);
+                throw error;
+            } finally {
+                hideLoading();
+            }
+        }
+
+        /**
+         * Finds a file by name in the appDataFolder.
+         * @param {string} fileName - The name of the file to find.
+         * @returns {Promise<Object|null>} File metadata {id, name, mimeType} or null if not found.
+         */
+        async function getAppDataFile(fileName) {
+            try {
+                showLoading();
+                await getGoogleAuthToken();
+                const response = await gapi.client.drive.files.list({
+                    q: `name = '${fileName}' and 'appDataFolder' in parents and trashed = false`,
+                    spaces: 'appDataFolder',
+                    fields: 'files(id, name, mimeType)'
+                });
+                return response.result.files.length > 0 ? response.result.files[0] : null;
+            } finally {
+                hideLoading();
+            }
+        }
+
+
+        // --- Markdown Sectioning ---
+
+        /**
+         * Extracts a section from markdown content.
+         * @param {string} markdown - The full markdown content.
+         * @param {string} sectionName - The name of the section (e.g., "My Section", "# Another Section").
+         * @returns {string} The content of the extracted section, or an empty string if not found.
+         */
+        function extractSection(markdown, sectionName) {
+            const trimmedSectionName = sectionName.trim();
+            const prefixedSectionName = trimmedSectionName.startsWith('#') ? trimmedSectionName : `# ${trimmedSectionName}`;
+            const lines = markdown.split('\n');
+            let sectionContent = [];
+            let inSection = false;
+            let currentSectionLevel = 0;
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+
+                if (!inSection) {
+                    if (line.trim() === prefixedSectionName) {
+                        inSection = true;
+                        currentSectionLevel = (line.match(/^(#+)/)?.[1]?.length || 0); // Get actual hash level
+                        // Start of the section is from the following line.
+                        continue;
+                    }
+                } else {
+                    const nextSectionMatch = line.match(/^(#+)\s/);
+                    if (nextSectionMatch) {
+                        const nextSectionLevel = nextSectionMatch[1].length;
+                        // If a line starts with a hash and has the same number or fewer leading hashes
+                        if (nextSectionLevel <= currentSectionLevel) {
+                            break; // End of current section
+                        }
+                    }
+                    sectionContent.push(line);
+                }
+            }
+
+            return sectionContent.join('\n').trim();
+        }
+
+        /**
+         * Replaces the content of a specific section in markdown.
+         * @param {string} markdown - The full markdown content.
+         * @param {string} sectionName - The name of the section to replace.
+         * @param {string} newContents - The new content for the section.
+         * @returns {string} The updated markdown content.
+         */
+        function replaceSection(markdown, sectionName, newContents) {
+            const trimmedSectionName = sectionName.trim();
+            const prefixedSectionName = trimmedSectionName.startsWith('#') ? trimmedSectionName : `# ${trimmedSectionName}`;
+            const lines = markdown.split('\n');
+            const resultLines = [];
+            let inSection = false;
+            let sectionFound = false;
+            let currentSectionLevel = 0;
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+
+                if (!inSection) {
+                    resultLines.push(line); // Keep lines before the section
+
+                    if (line.trim() === prefixedSectionName) {
+                        inSection = true;
+                        sectionFound = true;
+                        currentSectionLevel = (line.match(/^(#+)/)?.[1]?.length || 0);
+                        // The original section content lines will be skipped, new content inserted after heading
+                        resultLines.push(newContents.trim());
+                    }
+                } else {
+                    const nextSectionMatch = line.match(/^(#+)\s/);
+                    if (nextSectionMatch) {
+                        const nextSectionLevel = nextSectionMatch[1].length;
+                        if (nextSectionLevel <= currentSectionLevel) {
+                            // Found start of next section, end of current section
+                            inSection = false;
+                            resultLines.push(line); // Add the next section's heading
+                        }
+                    }
+                    // If still in section (and not a next heading), skip this line as it's being replaced.
+                }
+            }
+
+            if (!sectionFound) {
+                // If the section heading was not found, add it.
+                return addSection(markdown, sectionName, newContents);
+            }
+
+            return resultLines.join('\n');
+        }
+
+        /**
+         * Adds a new section to the markdown content.
+         * @param {string} markdown - The full markdown content.
+         * @param {string} sectionName - The name of the new section.
+         * @param {string} contents - The content of the new section.
+         * @returns {string} The updated markdown content.
+         */
+        function addSection(markdown, sectionName, contents) {
+            const trimmedSectionName = sectionName.trim();
+            const prefixedSectionName = trimmedSectionName.startsWith('#') ? trimmedSectionName : `# ${trimmedSectionName}`;
+            const newSectionBlock = `\n\n${prefixedSectionName}\n${contents.trim()}\n`;
+            const appAreaMarker = '# Application area';
+            const lines = markdown.split('\n');
+            const insertIndex = lines.findIndex(line => line.trim() === appAreaMarker);
+
+            if (insertIndex !== -1) {
+                // Insert before '# Application area'
+                lines.splice(insertIndex, 0, newSectionBlock);
+                return lines.join('\n');
+            } else {
+                // Append to the end
+                return markdown + newSectionBlock;
+            }
+        }
+
+
+        // --- Settings & Configuration ---
+
+        /** Loads configuration from local storage. */
+        function loadConfigFromLocalStorage() {
+            try {
+                const storedConfig = localStorage.getItem('config');
+                if (storedConfig) {
+                    const parsedConfig = JSON.parse(storedConfig);
+                    Object.assign(CONFIG, parsedConfig);
+                    console.log('Config loaded from localStorage.');
+                }
+                // Update UI fields
+                codingModelInput.value = CONFIG.CODING_MODEL;
+                codingApiKeyInput.value = CONFIG.CODING_API_KEY;
+                convModelInput.value = CONFIG.CONV_MODEL;
+                convApiKeyInput.value = CONFIG.CONV_API_KEY;
+
+                // Enable resume button if coding API key is present
+                if (CONFIG.CODING_API_KEY) {
+                    enableButton(resumeBtn);
+                } else {
+                    disableButton(resumeBtn);
+                }
+            } catch (error) {
+                handleError(error, 'Loading config from local storage');
+            }
+        }
+
+        /** Saves configuration from modal fields to memory and local storage. */
+        function saveConfigToMemory() {
+            CONFIG.CODING_MODEL = codingModelInput.value.trim();
+            CONFIG.CODING_API_KEY = codingApiKeyInput.value.trim();
+            CONFIG.CONV_MODEL = convModelInput.value.trim();
+            CONFIG.CONV_API_KEY = convApiKeyInput.value.trim();
+
+            localStorage.setItem('config', JSON.stringify(CONFIG));
+            console.log('Config saved to memory and local storage.');
+
+            if (CONFIG.CODING_API_KEY) {
+                enableButton(resumeBtn);
+            } else {
+                disableButton(resumeBtn);
+            }
+        }
+
+        /** Loads configuration from Google Drive appDataFolder. */
+        async function loadConfigFromDrive() {
+            try {
+                showLoading();
+                const file = await getAppDataFile('config.json');
+                if (file) {
+                    const content = await fetchFileContentFromDrive(file.id);
+                    const parsedConfig = JSON.parse(content);
+                    Object.assign(CONFIG, parsedConfig);
+                    localStorage.setItem('config', JSON.stringify(CONFIG)); // Also update local storage
+                    console.log('Config loaded from Google Drive.');
+
+                    // Update UI fields
+                    codingModelInput.value = CONFIG.CODING_MODEL;
+                    codingApiKeyInput.value = CONFIG.CODING_API_KEY;
+                    convModelInput.value = CONFIG.CONV_MODEL;
+                    convApiKeyInput.value = CONFIG.CONV_API_KEY;
+
+                    if (CONFIG.CODING_API_KEY) {
+                        enableButton(resumeBtn);
+                    } else {
+                        disableButton(resumeBtn);
+                    }
+                    showMessage('Success', 'Configuration loaded from Google Drive.', 'info');
+                } else {
+                    showMessage('Info', 'config.json not found in Google Drive App Data folder.', 'info');
+                }
+            } catch (error) {
+                handleError(error, 'Loading config from Drive');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        /** Saves current configuration to Google Drive appDataFolder. */
+        async function saveConfigToDrive() {
+            try {
+                showLoading();
+                saveConfigToMemory(); // Ensure current UI values are in CONFIG object
+                const configContent = JSON.stringify(CONFIG, null, 2);
+                await saveFileToDrive('config.json', configContent, 'appDataFolder', 'application/json');
+                showMessage('Success', 'Configuration saved to Google Drive App Data folder.', 'info');
+            } catch (error) {
+                handleError(error, 'Saving config to Drive');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // --- LLM Interaction ---
+
+        const OPENAI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/openai/chat/completions';
+
+        /**
+         * Generic function to call an LLM with function calling.
+         * @param {string} modelName - The model to use.
+         * @param {string} apiKey - The API key for the model.
+         * @param {string} systemPrompt - The system prompt (can be empty).
+         * @param {string} userPrompt - The user prompt.
+         * @returns {Promise<{ContentType: string, Contents: string, CreatedDate: Date}>} LLM response.
+         */
+        async function callLLM(modelName, apiKey, systemPrompt, userPrompt) {
+            if (!apiKey) {
+                throw new Error(`API Key for model '${modelName}' is missing.`);
+            }
+
+            const messages = [];
+            if (systemPrompt) {
+                messages.push({ role: 'system', content: systemPrompt });
+            }
+            messages.push({ role: 'user', content: userPrompt });
+
+            const tools = [
+                {
+                    function_declarations: [
+                        {
+                            name: "send_to_user",
+                            description: "Send the payload of the specific type to the user. For example, to send HTML, call send_to_user(\"text/html\", \"<html><body></body></html>\")",
+                            parameters: {
+                                type: "object",
+                                properties: {
+                                    content_type: { type: "string", description: "MIME type of the content, e.g., 'text/html', 'text/plain', 'application/json'." },
+                                    content: { type: "string", description: "The payload content." }
+                                },
+                                required: ["content_type", "content"]
+                            }
+                        },
+                        {
+                            name: "add_section",
+                            description: "Add a top-level section to the markdown file. Inserts before '# Application area' or at the end.",
+                            parameters: {
+                                type: "object",
+                                properties: {
+                                    section_name: { type: "string", description: "The name of the section (e.g., '# New Section')." },
+                                    contents: { type: "string", description: "The content of the new section." }
+                                },
+                                required: ["section_name", "contents"]
+                            }
+                        },
+                        {
+                            name: "replace_section",
+                            description: "Replaces the full contents of the named section with the provided contents in the loaded markdown file in memory.",
+                            parameters: {
+                                type: "object",
+                                properties: {
+                                    section_name: { type: "string", description: "The name of the section to replace." },
+                                    contents: { type: "string", description: "The new content for the section." }
+                                },
+                                required: ["section_name", "contents"]
+                            }
+                        }
+                    ]
+                }
+            ];
+
+            const payload = {
+                model: modelName,
+                reasoning_effort: 'medium',
+                stream: false,
+                messages: messages,
+                tools: tools
+            };
+
+            console.log('Calling LLM with payload:', payload);
+
+            try {
+                showLoading();
+                const response = await fetch(OPENAI_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': apiKey // Use x-api-key for Gemini if it's not a standard OpenAI endpoint with Bearer
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errorBody = await response.json();
+                    throw new Error(`LLM API error: ${response.status} ${response.statusText} - ${JSON.stringify(errorBody)}`);
+                }
+
+                const data = await response.json();
+                console.log('LLM Raw Response:', data);
+
+                const createdDate = new Date();
+
+                // Check for function calls first
+                const functionCall = data.candidates?.[0]?.content?.parts?.[0]?.functionCall;
+                if (functionCall) {
+                    const { name, args } = functionCall;
+                    console.log(`LLM requested function call: ${name} with args:`, args);
+
+                    if (name === 'send_to_user') {
+                        return { ContentType: args.content_type, Contents: args.content, CreatedDate: createdDate };
+                    } else if (name === 'add_section') {
+                        if (currentMarkdownFile.content) {
+                            currentMarkdownFile.content = addSection(currentMarkdownFile.content, args.section_name, args.contents);
+                            postMessageToIframe('sectionUpdated', { action: 'add', section_name: args.section_name }); // Notify iframe
+                        }
+                        return { ContentType: 'text/plain', Contents: `Section '${args.section_name}' added to markdown.`, CreatedDate: createdDate };
+                    } else if (name === 'replace_section') {
+                        if (currentMarkdownFile.content) {
+                            currentMarkdownFile.content = replaceSection(currentMarkdownFile.content, args.section_name, args.contents);
+                            postMessageToIframe('sectionUpdated', { action: 'replace', section_name: args.section_name }); // Notify iframe
+                        }
+                        return { ContentType: 'text/plain', Contents: `Section '${args.section_name}' replaced in markdown.`, CreatedDate: createdDate };
+                    } else {
+                        throw new Error(`Unknown function call requested by LLM: ${name}`);
+                    }
+                }
+
+                // If no function call, return the text content
+                const textContent = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                if (textContent) {
+                    return { ContentType: 'text/plain', Contents: textContent, CreatedDate: createdDate };
+                } else {
+                    throw new Error('LLM response contained no text or function call.');
+                }
+            } finally {
+                hideLoading();
+            }
+        }
+
+        /**
+         * Specific LLM call for code generation based on markdown section.
+         * @param {string} markdownContent - The full markdown file content (for # UX Instructions).
+         * @returns {Promise<{ContentType: string, Contents: string, CreatedDate: Date}>} LLM response.
+         */
+        async function callLLMForCodeGeneration(markdownContent) {
+            const uxInstructionsContent = extractSection(markdownContent, '# UX Instructions');
+            if (!uxInstructionsContent) {
+                throw new Error("Section '# UX Instructions' not found in the markdown file for code generation.");
+            }
+
+            const userPrompt = `Act as a frontend engineer. Based on the section '# UX Instructions' in this file,
+generate a modern single-page single-file HTML application.
+
+REQUIREMENTS:
+1. Output ONLY a complete, valid index.html file including CSS and JS.
+2. Do not use place holder or stubs or TODO comments.
+3. Use the send_to_user function for the output with appropriate content type.
+
+FILE CONTENT:
+${uxInstructionsContent}
+`;
+            return callLLM(CONFIG.CODING_MODEL, CONFIG.CODING_API_KEY, '', userPrompt);
+        }
+
+        // --- Generation Pipeline ---
+
+        /**
+         * Compiles markdown content to HTML using LLM or cache.
+         * @param {string} markdownContent - The full markdown file content.
+         * @returns {Promise<string>} The generated HTML string.
+         */
+        async function compileMarkdownToHtml(markdownContent) {
+            try {
+                showLoading();
+                const taiChiSectionContent = extractSection(markdownContent, '# Tai Chi Application');
+                if (!taiChiSectionContent) {
+                    throw new Error("Section '# Tai Chi Application' not found in the markdown file.");
+                }
+
+                const normalizedContent = taiChiSectionContent.trim();
+                const sha256Hash = await hashSHA256(normalizedContent);
+                const cacheKey = `Markdown-${sha256Hash}`;
+                const cached = localStorage.getItem(cacheKey);
+
+                if (cached) {
+                    const parsedCache = JSON.parse(cached);
+                    console.log('HTML loaded from cache.');
+                    return parsedCache.Contents;
+                } else {
+                    console.log('Generating HTML via LLM...');
+                    const llmResponse = await callLLMForCodeGeneration(markdownContent);
+                    if (llmResponse.ContentType === 'text/html') {
+                        localStorage.setItem(cacheKey, JSON.stringify(llmResponse));
+                        return llmResponse.Contents;
+                    } else {
+                        throw new Error(`LLM did not return HTML for code generation. Content type: ${llmResponse.ContentType}, Content: ${llmResponse.Contents}`);
+                    }
+                }
+            } finally {
+                hideLoading();
+            }
+        }
+
+        /**
+         * Embeds the generated HTML into the iframe.
+         * @param {string} htmlString - The HTML content to embed.
+         */
+        function embedHtml(htmlString) {
+            try {
+                landingPage.style.display = 'none'; // Hide landing page
+                executionFrame.classList.add('visible'); // Show iframe
+                executionFrame.srcdoc = htmlString;
+                // `iframeWindow` will be set by the `iframe.onload` event listener
+
+                enableButton(addToDriveBtn);
+                enableButton(downloadBtn);
+                disableButton(resumeBtn); // Resume button is for loading new files, so disable once one is loaded
+
+                console.log('HTML embedded into iframe.');
+            } catch (error) {
+                handleError(error, 'Embedding HTML');
+            }
+        }
+
+        /**
+         * Triggers the full generation pipeline from file load to HTML embedding.
+         * @param {string} fileName - The name of the loaded markdown file.
+         * @param {string} fileContent - The content of the loaded markdown file.
+         */
+        async function triggerGenerationPipeline(fileName, fileContent) {
+            try {
+                showLoading();
+                currentMarkdownFile = { name: fileName, content: fileContent };
+                hideModal(resumeModal);
+
+                const generatedHtml = await compileMarkdownToHtml(currentMarkdownFile.content);
+                embedHtml(generatedHtml);
+
+                showMessage('Success', `Markdown file '${fileName}' processed and application embedded.`, 'info');
+            } catch (error) {
+                handleError(error, 'Generation Pipeline');
+                // Revert UI if pipeline fails
+                landingPage.style.display = 'flex';
+                executionFrame.classList.remove('visible');
+                // Re-enable resume if settings has API key
+                if (CONFIG.CODING_API_KEY) {
+                    enableButton(resumeBtn);
+                }
+                disableButton(addToDriveBtn);
+                disableButton(downloadBtn);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // --- Event Handlers ---
+
+        settingsBtn.addEventListener('click', () => {
+            if (isProcessing) return;
+            disableButton(settingsBtn); // Disable while modal is open
+            // Ensure inputs reflect current CONFIG before showing
+            codingModelInput.value = CONFIG.CODING_MODEL;
+            codingApiKeyInput.value = CONFIG.CODING_API_KEY;
+            convModelInput.value = CONFIG.CONV_MODEL;
+            convApiKeyInput.value = CONFIG.CONV_API_KEY;
+            showModal(settingsModal);
+        });
+
+        cancelSettingsBtn.addEventListener('click', () => {
+            hideModal(settingsModal);
+            enableButton(settingsBtn); // Re-enable settings button
+        });
+
+        settingsModal.addEventListener('close', () => {
+            enableButton(settingsBtn); // Ensure settings button is enabled on modal close
+        });
+
+        document.getElementById('settings-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            saveConfigToMemory();
+            hideModal(settingsModal);
+            enableButton(settingsBtn); // Re-enable settings button
+        });
+
+        loadConfigDriveBtn.addEventListener('click', async () => {
+            await loadConfigFromDrive();
+        });
+
+        saveConfigDriveBtn.addEventListener('click', async () => {
+            await saveConfigToDrive();
+        });
+
+        resumeBtn.addEventListener('click', () => {
+            if (isProcessing) return;
+            disableButton(resumeBtn); // Disable while modal is open
+            showModal(resumeModal);
+        });
+
+        cancelResumeBtn.addEventListener('click', () => {
+            hideModal(resumeModal);
+            enableButton(resumeBtn); // Re-enable resume button
+        });
+
+        resumeModal.addEventListener('close', () => {
+            // Only re-enable if current markdown file is not loaded.
+            // If a file is loaded, resume should stay disabled until reset/new process.
+            if (!currentMarkdownFile.content) {
+                enableButton(resumeBtn);
+            }
+        });
+
+
+        uploadLocalFileBtn.addEventListener('click', () => {
+            if (isProcessing) return;
+            localFileInput.click(); // Trigger hidden file input
+        });
+
+        localFileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                try {
+                    showLoading();
+                    const reader = new FileReader();
+                    reader.onload = async (event) => {
+                        await triggerGenerationPipeline(file.name, event.target.result);
+                    };
+                    reader.onerror = (error) => handleError(error, 'Reading local file');
+                    reader.readAsText(file);
+                } catch (error) {
+                    handleError(error, 'Local file upload');
+                    hideModal(resumeModal);
+                    enableButton(resumeBtn);
+                } finally {
+                    hideLoading();
+                    localFileInput.value = ''; // Clear file input
+                }
+            } else {
+                hideModal(resumeModal);
+                enableButton(resumeBtn);
+            }
+        });
+
+        loadDriveFileBtn.addEventListener('click', async () => {
+            if (isProcessing) return;
+            try {
+                showLoading();
+                const file = await selectFileFromDrive();
+                if (file) {
+                    await triggerGenerationPipeline(file.name, file.content);
+                } else {
+                    showMessage('Info', 'No file selected from Google Drive.', 'info');
+                    hideModal(resumeModal);
+                    enableButton(resumeBtn);
+                }
+            } catch (error) {
+                handleError(error, 'Loading file from Drive');
+                hideModal(resumeModal); // Close modal on error
+                enableButton(resumeBtn); // Re-enable button
+            } finally {
+                hideLoading();
+            }
+        });
+
+        downloadBtn.addEventListener('click', () => {
+            if (isProcessing) return;
+            if (currentMarkdownFile.name && currentMarkdownFile.content) {
+                try {
+                    const blob = new Blob([currentMarkdownFile.content], { type: 'text/markdown' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = currentMarkdownFile.name;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    showMessage('Success', `File '${currentMarkdownFile.name}' downloaded.`, 'info');
+                } catch (error) {
+                    handleError(error, 'Downloading file');
+                }
+            } else {
+                showMessage('Warning', 'No file loaded to download.', 'info');
+            }
+        });
+
+        addToDriveBtn.addEventListener('click', async () => {
+            if (isProcessing) return;
+            if (currentMarkdownFile.name && currentMarkdownFile.content) {
+                try {
+                    showLoading();
+                    const folder = await selectFolderFromDrive();
+                    if (folder) {
+                        await saveFileToDrive(currentMarkdownFile.name, currentMarkdownFile.content, folder.id);
+                        showMessage('Success', `File '${currentMarkdownFile.name}' saved to Google Drive.`, 'info');
+                    } else {
+                        showMessage('Info', 'No folder selected. File not saved.', 'info');
+                    }
+                } catch (error) {
+                    handleError(error, 'Saving file to Drive');
+                } finally {
+                    hideLoading();
+                }
+            } else {
+                showMessage('Warning', 'No file loaded to save to Drive.', 'info');
+            }
+        });
+
+        closeMessageModalBtn.addEventListener('click', () => {
+            hideModal(messageModal);
+        });
+
+        // --- Iframe Message Handling ---
+
+        window.addEventListener('message', async (event) => {
+            if (event.origin !== window.location.origin) {
+                console.warn('Received message from untrusted origin:', event.origin);
+                return;
+            }
+
+            const [type, ...args] = event.data;
+
+            if (type === 'function') {
+                const functionName = args[0];
+                const functionArgs = args.slice(1);
+                console.log(`Received iframe message: call ${functionName} with args:`, functionArgs);
+
+                try {
+                    let result;
+                    switch (functionName) {
+                        case 'callModel':
+                            result = await callLLM(CONFIG.CONV_MODEL, CONFIG.CONV_API_KEY, functionArgs[0], functionArgs[1]);
+                            break;
+                        case 'replaceSection':
+                            if (!currentMarkdownFile.content) throw new Error("No markdown file loaded.");
+                            currentMarkdownFile.content = replaceSection(currentMarkdownFile.content, functionArgs[0], functionArgs[1]);
+                            result = { success: true, message: `Section '${functionArgs[0]}' replaced.` };
+                            break;
+                        case 'addSection':
+                            if (!currentMarkdownFile.content) throw new Error("No markdown file loaded.");
+                            currentMarkdownFile.content = addSection(currentMarkdownFile.content, functionArgs[0], functionArgs[1]);
+                            result = { success: true, message: `Section '${functionArgs[0]}' added.` };
+                            break;
+                        default:
+                            throw new Error(`Unknown function: ${functionName}`);
+                    }
+                    postMessageToIframe('functionResponse', result);
+                } catch (error) {
+                    handleError(error, `Iframe function call: ${functionName}`);
+                    postMessageToIframe('functionResponse', null, error.message || 'Unknown error');
+                }
+            }
+        });
+
+        // --- Initial Setup ---
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadConfigFromLocalStorage();
+            initGoogleAuth();
+            // Initially, only settings button is active
+            // download and add_to_drive are disabled by default in HTML
+            // resume is enabled by loadConfigFromLocalStorage if API key exists
+        });
+
+        // Event listener for iframe load to get its window object
+        executionFrame.onload = () => {
+            iframeWindow = executionFrame.contentWindow;
+            console.log('Iframe loaded. Iframe window reference obtained.');
+        };
+    </script>
+</body>
+</html>
+```

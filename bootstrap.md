@@ -143,8 +143,7 @@ The following is the process to compile markdown files to HTML
 4. Othewrise follow the steps in `Calling the LLM`  with `CODING_MODEL`, corresponding key and the following user prompt and empty system prompt:
 
 ```
-Act as a frontend engineer.  Based on the section `# UX Instructions` in this file,
-generate a modern single-page single-file HTML application.
+Act as a frontend engineer.  Generate a modern single-page single-file HTML application.
 
 REQUIREMENTS:
 1. Output ONLY a complete, valid index.html file include CSS and JS.
