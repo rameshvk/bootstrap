@@ -1242,17 +1242,16 @@ ${base64Content}
 
         /**
          * Specific LLM call for code generation based on markdown section.
-         * @param {string} markdownContent - The full markdown file content (for # UX Instructions).
+         * @param {string} markdownContent - The full markdown file content (for # Tai Chi Application).
          * @returns {Promise<{ContentType: string, Contents: string, CreatedDate: Date}>} LLM response.
          */
         async function callLLMForCodeGeneration(markdownContent) {
-            const uxInstructionsContent = extractSection(markdownContent, '# UX Instructions');
+            const uxInstructionsContent = extractSection(markdownContent, '# Tai Chi Application');
             if (!uxInstructionsContent) {
-                throw new Error("Section '# UX Instructions' not found in the markdown file for code generation.");
+                throw new Error("Section '# Tai Chi Application' not found in the markdown file for code generation.");
             }
 
-            const userPrompt = `Act as a frontend engineer. Based on the section '# UX Instructions' in this file,
-generate a modern single-page single-file HTML application.
+            const userPrompt = `Act as a frontend engineer. Generate a modern single-page single-file HTML application.
 
 REQUIREMENTS:
 1. Output ONLY a complete, valid index.html file including CSS and JS.
